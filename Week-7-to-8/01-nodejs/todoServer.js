@@ -39,11 +39,101 @@
 
   Testing the server - run `npm run test-todoServer` command in terminal
  */
-  const express = require('express');
-  const bodyParser = require('body-parser');
-  
-  const app = express();
-  
-  app.use(bodyParser.json());
-  
-  module.exports = app;
+const express = require("express");
+const bodyParser = require("body-parser");
+const fs = require("fs");
+const app = express();
+
+app.use(bodyParser.json());
+app.use(express.json());
+
+let id = 0;
+
+function readFile() {
+  const str = fs.readFileSync("todos.json", "utf-8");
+  const todos = JSON.parse(str);
+  return todos;
+}
+
+function writeFile(todos) {
+  const str = fs.writeFileSync("todos.json", JSON.stringify(todos, null, 2));
+}
+
+function assignId(req, res, next) {
+  const todos = readFile();
+  id = todos.length > 0 ? todos[todos.length - 1].id + 1 : id;
+  next();
+}
+
+app.get("/", (req, res) => {
+  res.send("Hello World");
+});
+
+app.post("/create/todo", assignId, (req, res) => {
+  const title = req.body.title;
+  const description = req.body.description;
+  let todos = readFile();
+  todos.push({ id: id, title: title, description: description });
+  writeFile(todos);
+  res.status(201).send(todos);
+});
+
+app.put("/todo", (req, res) => {
+  const paramId = parseInt(req.query.id);
+  if (isNaN(paramId)) {
+    return res.status(404).json({ error: "Todo not found" });
+  }
+  let todos = readFile();
+  let todo = todos.findIndex((each) => each.id === paramId);
+  if (todo === -1) {
+    res.status(404).json({ error: "Todo not found" });
+  }
+  todos[todo].title = req.body.title;
+  todos[todo].description = req.body.description;
+  writeFile(todos);
+  res.json(todos);
+});
+
+app.get("/todos", (req, res) => {
+  let todos = readFile();
+  res.send(todos);
+});
+
+app.get("/todo", (req, res) => {
+  const paramId = parseInt(req.query.id);
+  if (isNaN(paramId)) {
+    return res.status(404).json({ error: "Todo not found" });
+  }
+  let todos = readFile();
+  const todoById = todos.find((each) => each.id === paramId);
+  if (!todoById) {
+    res.status(404).json({ error: "Todo not found" });
+  } else {
+    res.json(todoById);
+  }
+});
+
+app.delete("/todo", (req, res) => {
+  const paramId = parseInt(req.query.id);
+  if (isNaN(paramId)) {
+    return res.status(404).json({ error: "Todo not found" });
+  }
+  let todos = readFile();
+  const todoExists = todos.find((each) => each.id === paramId);
+  if (!todoExists) {
+    return res.status(404).json({ error: "Todo not found" });
+  }
+  todos = todos.filter((each) => each.id !== paramId);
+  writeFile(todos);
+  res.status(200).send(todos);
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+app.listen(3000, () => {
+  console.log("Server is running on http://localhost:3000");
+});
+
+module.exports = app;
