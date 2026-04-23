@@ -29,78 +29,81 @@
   Testing the server - run `npm run test-authenticationServer` command in terminal
  */
 
-  const express = require("express")
-  const PORT = 3000;
-  const app = express();
-  // write your logic here, DONT WRITE app.listen(3000) when you're running tests, the tests will automatically start the server
-  
-  var users = [];
-  
-  app.use(express.json());
-  app.post("/signup", (req, res) => {
-    var user = req.body;
-    let userAlreadyExists = false;
-    for (var i = 0; i<users.length; i++) {
-      if (users[i].email === user.email) {
-          userAlreadyExists = true;
-          break;
-      }
-    }
-    if (userAlreadyExists) {
-      res.sendStatus(400);
-    } else {
-      users.push(user);
-      res.status(201).send("Signup successful");
-    }
+const express = require("express");
+const PORT = 3000;
+const app = express();
+// write your logic here, DONT WRITE app.listen(3000) when you're running tests, the tests will automatically start the server
+
+let users = [];
+let id = 0;
+
+app.use(express.json());
+
+function generateId(req, res, next) {
+  id++;
+  next();
+}
+
+app.post("/signup", generateId, (req, res) => {
+  const firstName = req.body.firstName;
+  const lastName = req.body.lastName;
+  const username = req.body.username;
+  const password = req.body.password;
+
+  const findId = users.findIndex((user) => {
+    return user.username === username;
   });
-  
-  app.post("/login", (req, res) => {
-    var user = req.body;
-    let userFound = null;
-    for (var i = 0; i<users.length; i++) {
-      if (users[i].email === user.email && users[i].password === user.password) {
-          userFound = users[i];
-          break;
-      }
-    }
-  
-    if (userFound) {
-      res.json({
-          firstName: userFound.firstName,
-          lastName: userFound.lastName,
-          email: userFound.email
-      });
-    } else {
-      res.sendStatus(401);
-    }
+
+  if (findId !== -1)
+    return res.status(400).json({ error: "username already exists" });
+
+  users.push({ id, firstName, lastName, username, password });
+  res.status(201).json(users);
+});
+
+app.post("/login", (req, res) => {
+  const username = req.body.username;
+  const password = req.body.password;
+
+  const findId = users.findIndex((user) => {
+    return user.username === username;
   });
-  
-  app.get("/data", (req, res) => {
-    var email = req.headers.email;
-    var password = req.headers.password;
-    let userFound = false;
-    for (var i = 0; i<users.length; i++) {
-      if (users[i].email === email && users[i].password === password) {
-          userFound = true;
-          break;
-      }
-    }
-  
-    if (userFound) {
-      let usersToReturn = [];
-      for (let i = 0; i<users.length; i++) {
-          usersToReturn.push({
-              firstName: users[i].firstName,
-              lastName: users[i].lastName,
-              email: users[i].email
-          });
-      }
-      res.json({
-          users
-      });
-    } else {
-      res.sendStatus(401);
-    }
+
+  if (findId === -1) {
+    return res.status(401).json({ error: "credentials are invalid" });
+  }
+
+  if (users[findId].password !== password)
+    return res.status(401).json({ error: "credentials are invalid" });
+
+  res.send({
+    firstname: users[findId].firstName,
+    lastName: users[findId].lastName,
+    token: users[findId].id + users[findId].lastName,
   });
-  
-  module.exports = app;
+});
+
+app.get("/data", (req, res) => {
+  const { username, password } = req.headers;
+  const user = users.find(
+    (u) => u.username === username && u.password === password,
+  );
+  if (!user) return res.status(401).json({ error: "Unauthorized" });
+
+  res.status(200).json({
+    users: users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      firstName: u.firstName,
+      lastName: u.lastName,
+    })),
+  });
+});
+
+app.all("*", (req, res) => res.status(404).send("Route not found"));
+
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+
+module.exports = app;
