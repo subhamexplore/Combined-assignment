@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const jwtPassword = 'secret_key';
+const jwt = require("jsonwebtoken");
+const jwtPassword = "secret_key";
 
 /**
  * Generates a JWT that includes a user's role (admin or guest).
@@ -8,7 +8,8 @@ const jwtPassword = 'secret_key';
  * @returns {string|null} A JWT if role is valid; otherwise null.
  */
 function signJwtWithRole(username, role) {
-    // Your code here
+  if (role !== "admin" && role !== "guest") return null;
+  return jwt.sign({ username, role }, jwtPassword);
 }
 
 /**
@@ -17,5 +18,16 @@ function signJwtWithRole(username, role) {
  * @returns {boolean} True if the role in the payload is 'admin', false otherwise.
  */
 function isAdmin(token) {
-    // Your code here
+  try {
+    const decode = jwt.verify(token, jwtPassword);
+    return decode.role === "admin" ? true : false
+  } catch (error) {
+    return false;
+  }
 }
+
+module.exports = {
+    signJwtWithRole,
+    isAdmin,
+    jwtPassword
+};
