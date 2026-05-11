@@ -16,7 +16,7 @@
 backend/
   ├── config.js
   ├── db.js
-  ├── index.js
+  ├── index.jsa
   ├── middleware.js
   └── routes/
       ├── user.js
